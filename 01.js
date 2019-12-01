@@ -3,20 +3,20 @@
 function calc() {
 	const modules = input.match(/\d+/g).map(Number);
 
-	const fuel = (mass) => Math.floor(mass / 3) - 2;
+	const getFuel = (mass) => Math.max(Math.floor(mass / 3) - 2, 0);
 	
-	const fuel2 = (mass) => {
+	const getFuel2 = (mass) => {
 		let res = 0;
 
 		while (mass > 0) {
-			mass = Math.max(fuel(mass), 0);
+			mass = getFuel(mass);
 			res += mass;
 		}
 
 		return res;
 	};
 
-	return modules.reduce((s, m) => s + fuel(m), 0) + " " + modules.reduce((s, m) => s + fuel2(m), 0);
+	return [getFuel, getFuel2].map(f => modules.reduce((s, m) => s + f(m), 0)).join(" ");
 }
 
 const input = `116860
