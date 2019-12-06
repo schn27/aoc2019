@@ -40,7 +40,7 @@ function run(m, input) {
 			m[z] = get(x, modeX) * get(y, modeY);
 		} else if (opcode == opIn) {
 			size = 2;
-			m[x] = input.length > 0 ? input.shift() : 0;
+			m[x] = input.shift() || 0;
 		} else if (opcode == opOut) {
 			size = 2;
 			output.push(get(x, modeX));
