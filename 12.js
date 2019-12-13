@@ -13,9 +13,7 @@ function calc() {
 		periods.push(x);
 	}
 
-	console.log(periods);
-
-	const part2 = periods[0] * periods[1] * periods[2];
+	const part2 = getLcmN(periods);
 
 	return part1 + " " + part2;
 }
@@ -82,6 +80,33 @@ function step(objects) {
 		o[1] += o[4];
 		o[2] += o[5];
 	}
+}
+
+function getLcmN(nums) {
+	let res = getLcm(nums[0], nums[1]);
+
+	for (let i = 2; i < nums.length ; ++i) {
+		res = getLcm(res, nums[i]);
+	}
+
+	return res;
+}
+
+function getLcm(x, y) {
+	return (!x || !y) ? 0 : Math.abs((x * y) / getGcd(x, y));
+}
+
+function getGcd(x, y) {
+	x = Math.abs(x);
+	y = Math.abs(y);
+	
+	while (y) {
+		const t = y;
+		y = x % y;
+		x = t;
+	}
+
+	return x;
 }
 
 const test = `<x=-1, y=0, z=2>
