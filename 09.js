@@ -30,7 +30,7 @@ function IntCode(text, input) {
 	const opRelBase = 9;
 	const opHalt = 99;
 
-	this.get = (a, mode) => {
+	this.get = (a, mode = 0) => {
 		if (mode == 0) {
 			return m[a] || 0;
 		} else if (mode == 1) {
@@ -42,11 +42,11 @@ function IntCode(text, input) {
 		}
 	}
 
-	this.set = (a, mode, value) => {
+	this.set = (a, v, mode = 0) => {
 		if (mode == 0) {
-			m[a] = value;
+			m[a] = v;
 		} else if (mode == 2) {
-			m[a + base] = value;
+			m[a + base] = v;
 		}
 	}
 
@@ -59,11 +59,11 @@ function IntCode(text, input) {
 			const modeZ = Math.floor(op / 10000) % 10;
 			
 			if (opcode == opAdd) {
-				this.set(z, modeZ, this.get(x, modeX) + this.get(y, modeY));
+				this.set(z, this.get(x, modeX) + this.get(y, modeY), modeZ);
 				ip += 4;
 
 			} else if (opcode == opMul) {
-				this.set(z, modeZ, this.get(x, modeX) * this.get(y, modeY));
+				this.set(z, this.get(x, modeX) * this.get(y, modeY), modeZ);
 				ip += 4;
 
 			} else if (opcode == opIn) {
@@ -71,7 +71,7 @@ function IntCode(text, input) {
 					break;
 				}
 
-				this.set(x, modeX, this.input.shift());
+				this.set(x, this.input.shift(), modeX);
 				ip += 2;
 
 			} else if (opcode == opOut) {
@@ -93,11 +93,11 @@ function IntCode(text, input) {
 				}
 
 			} else if (opcode == opLessThan) {
-				this.set(z, modeZ, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0, modeZ);
 				ip += 4;
 
 			} else if (opcode == opEquals) {
-				this.set(z, modeZ, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0, modeZ);
 				ip += 4;
 
 			} else if (opcode == opRelBase) {

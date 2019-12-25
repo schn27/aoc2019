@@ -94,11 +94,7 @@ function IntCode(text, input) {
 		}
 	}
 
-	this.set = (a, mode, value) => {
-		if (mode == 0) {
-			m[a] = value;
-		}
-	}
+	this.set = (a, v) => m[a] = v;
 
 	this.run = () => {
 		for (;;) {
@@ -109,11 +105,11 @@ function IntCode(text, input) {
 			const modeZ = Math.floor(op / 10000) % 10;
 			
 			if (opcode == opAdd) {
-				this.set(z, modeZ, this.get(x, modeX) + this.get(y, modeY));
+				this.set(z, this.get(x, modeX) + this.get(y, modeY));
 				ip += 4;
 
 			} else if (opcode == opMul) {
-				this.set(z, modeZ, this.get(x, modeX) * this.get(y, modeY));
+				this.set(z, this.get(x, modeX) * this.get(y, modeY));
 				ip += 4;
 
 			} else if (opcode == opIn) {
@@ -121,7 +117,7 @@ function IntCode(text, input) {
 					break;
 				}
 
-				this.set(x, modeX, this.input.shift());
+				this.set(x, this.input.shift());
 				ip += 2;
 
 			} else if (opcode == opOut) {
@@ -143,11 +139,11 @@ function IntCode(text, input) {
 				}
 
 			} else if (opcode == opLessThan) {
-				this.set(z, modeZ, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0);
 				ip += 4;
 
 			} else if (opcode == opEquals) {
-				this.set(z, modeZ, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0);
 				ip += 4;
 
 			} else if (opcode == opHalt) {

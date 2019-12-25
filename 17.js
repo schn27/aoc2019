@@ -4,24 +4,13 @@ const turnLeft = {"^": "<", ">": "^", "v": ">", "<": "v"};
 const turnRight = {"^": ">", ">": "v", "v": "<", "<": "^"};
 const moves = {"^": [0, -1], ">": [1, 0], "v": [0, 1], "<": [-1, 0]};
 
-
 function calc() {	
 	const robot = new IntCode(input);
 	robot.run();
 
-	const map = [];
-	let row = [];
+	console.log(asciiToStr(robot.output).replace(/\./g, "_"));
 
-	robot.output.forEach(e => {
-		if (e != 10) {
-			row.push(String.fromCharCode(e));
-		} else {
-			map.push(row);
-			row = [];
-		}
-	});
-
-	console.log(map.map(l => l.map(c => c == "." ? "_" : c).join("")).join("\n"));
+	const map = asciiToStr(robot.output).split("\n").map(l => l.split(""));
 
 	const intersections = [];
 	let xyh = [];
@@ -80,10 +69,8 @@ function calc() {
 		}
 	}
 
-	const program = convert(seq.join(",")).split("").map(c => c.charCodeAt(0));
-
-	const robot2 = new IntCode(input, program);
-	robot2.set(0, 0, 2);
+	const robot2 = new IntCode(input, strToAscii(convert(seq.join(","))));
+	robot2.set(0, 2);
 	robot2.run();
 
 	return part1 + " " + robot2.output.pop();
@@ -102,6 +89,14 @@ R,10,R,12,L,12
 R,12,L,12,R,6
 n
 `;
+}
+
+function strToAscii(str) {
+	return str.split("").map(c => c.charCodeAt(0));
+}
+
+function asciiToStr(ascii) {
+	return ascii.map(c => String.fromCharCode(c)).join("");
 }
 
 function IntCode(text, input) {
@@ -124,7 +119,7 @@ function IntCode(text, input) {
 	const opRelBase = 9;
 	const opHalt = 99;
 
-	this.get = (a, mode) => {
+	this.get = (a, mode = 0) => {
 		if (mode == 0) {
 			return m[a] || 0;
 		} else if (mode == 1) {
@@ -136,11 +131,11 @@ function IntCode(text, input) {
 		}
 	}
 
-	this.set = (a, mode, value) => {
+	this.set = (a, v, mode = 0) => {
 		if (mode == 0) {
-			m[a] = value;
+			m[a] = v;
 		} else if (mode == 2) {
-			m[a + base] = value;
+			m[a + base] = v;
 		}
 	}
 
@@ -153,11 +148,11 @@ function IntCode(text, input) {
 			const modeZ = Math.floor(op / 10000) % 10;
 			
 			if (opcode == opAdd) {
-				this.set(z, modeZ, this.get(x, modeX) + this.get(y, modeY));
+				this.set(z, this.get(x, modeX) + this.get(y, modeY), modeZ);
 				ip += 4;
 
 			} else if (opcode == opMul) {
-				this.set(z, modeZ, this.get(x, modeX) * this.get(y, modeY));
+				this.set(z, this.get(x, modeX) * this.get(y, modeY), modeZ);
 				ip += 4;
 
 			} else if (opcode == opIn) {
@@ -165,7 +160,7 @@ function IntCode(text, input) {
 					break;
 				}
 
-				this.set(x, modeX, this.input.shift());
+				this.set(x, this.input.shift(), modeX);
 				ip += 2;
 
 			} else if (opcode == opOut) {
@@ -187,11 +182,11 @@ function IntCode(text, input) {
 				}
 
 			} else if (opcode == opLessThan) {
-				this.set(z, modeZ, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) < this.get(y, modeY) ? 1 : 0, modeZ);
 				ip += 4;
 
 			} else if (opcode == opEquals) {
-				this.set(z, modeZ, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0);
+				this.set(z, this.get(x, modeX) == this.get(y, modeY) ? 1 : 0, modeZ);
 				ip += 4;
 
 			} else if (opcode == opRelBase) {
