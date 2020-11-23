@@ -1,118 +1,166 @@
 "use strict";
 
-const xyToStr = xy => xy.join(":");
-const strToXy = str => str.split(":").map(Number);
-const moves = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const nextXy = (xy, move) => [xy[0] + move[0], xy[1] + move[1]];
-
 function calc() {
-	const map = test.split("\n").map(l => l.split(""));
+	const map = input.split("\n").map(line => line.split(""))
 
-	let xy0 = [];
-	const keysXy = {};
+	const part1 = getMinSteps(map);
+	const part2 = getMinSteps2(map);
 
-	for (let y = 0; y < map.length; ++y) {
-		for (let x = 0; x < map[y].length; ++x) {
-			if (map[y][x] == "@") {
-				map[y][x] = ".";
-				xy0 = [x, y];
-			} else if (map[y][x] >= "a" && map[y][x] <= "z") {
-				keysXy[map[y][x]] = [x, y];
-			}
+	return `${part1} ${part2}`;
+}
+
+function getMinSteps(map) {
+	const entrance = getCoord(map, '@');
+	const root = createGraph(map, entrance);
+	return getOptimalPath(root);
+}
+
+function getMinSteps2(map) {
+	const entrance = getCoord(map, '@');
+	map[entrance.y][entrance.x] = '#';
+	map[entrance.y - 1][entrance.x] = '#';
+	map[entrance.y + 1][entrance.x] = '#';
+	map[entrance.y][entrance.x - 1] = '#';
+	map[entrance.y][entrance.x + 1] = '#';
+
+	const newEntrances = [
+		{x: entrance.x - 1, y: entrance.y - 1},
+		{x: entrance.x + 1, y: entrance.y - 1},
+		{x: entrance.x - 1, y: entrance.y + 1},
+		{x: entrance.x + 1, y: entrance.y + 1}
+	];
+
+	const roots = newEntrances.map(e => {
+		map[e.y][e.x] = '@';
+		return createGraph(map, e);
+	});
+
+	const allKeys = roots.reduce((a, r) => {
+			a.push(...r.allKeys);
+			return a;
+		}, []
+	);
+
+	return roots.reduce((a, r) => a + getOptimalPath(r, allKeys.filter(k => r.allKeys.indexOf(k) < 0)), 0);
+}
+
+function getOptimalPath(root, givenKeys) {
+	let result = Infinity;
+
+	let keys = {};
+	(givenKeys || []).forEach(k => keys[k] = true);
+
+	let history = {};
+
+	const move0 = {node: root, steps: 0, keys: keys};
+	addToHistory([move0], history);
+
+	for (let queue = [move0]; queue.length > 0;) {
+		const move = queue.shift();
+
+		if (move.node.name >= 'a' && move.node.name <= 'z') {
+			move.keys[move.node.name] = true;
+		}
+
+		if (Object.keys(move.keys).filter(k => root.allKeys.indexOf(k) >= 0).length == root.allKeys.length) {
+			result = Math.min(result, move.steps);
+
+		} else {
+			let moves = getPossibleMovesFrom(move);
+			moves = filterClosedDoors(moves);
+			moves = filterSeenInHistory(moves, history);
+
+			addToHistory(moves, history);
+
+			queue.push(...moves);
 		}
 	}
 
-	const results = [];
-
-	for (let i = 0; i < 1; ++i) {
-		results.push(tryToFind(map, keysXy, xy0))
-	}
-
-	results.sort((a, b) => a - b);
-	console.log(results);
-
-
-	return 0 + " " + 0;
+	return result;	
 }
 
-function tryToFind(map, keysXy, xy0) {
-	let xy = [...xy0];
-	let keys = [];
-	let steps = 0;
-
-	while (Object.keys(keysXy).length != keys.length) {
-		const wave = getWave(map, xy, keys);
-
-		const foundKeys = Object.keys(keysXy)
-				.filter(k => (keys.indexOf(k) < 0) && (wave[xyToStr(keysXy[k])] != undefined));
-
-		const target = foundKeys[Math.floor(Math.random() * foundKeys.length)];
-		
-		console.log(foundKeys, target);
-
-		keys.push(target);
-
-		//const path = getPath(wave, keysXy[target], xy);
-		//keys.push(...Object.keys(keysXy).filter(k => path.indexOf(keysXy[k]) >= 0 && keys.indexOf(k) < 0));
-		xy = [...keysXy[target]];		
-		steps += wave[xyToStr(xy)];
-	}
-
-	return steps;
+function getPossibleMovesFrom(move) {
+	return move.node.link.map(link => ({node: link.node, steps: move.steps + link.dist, keys: {...move.keys}}));
 }
 
-function getPath(wave, from, to) {
-	const path = [];
-
-	let xy = from;
-
-	while (xyToStr(xy) != xyToStr(to)) {
-		const targetStep = wave[xyToStr(xy)] - 1;
-		const targets = Object.keys(wave).filter(k => wave[k] == targetStep);
-		
-		xy = moves.map(m => nextXy(xy, m))
-				  .filter(xy => targets.filter(t => t == xyToStr(xy)).length != 0)[0];
-
-		path.push(xy);
-	}
-
-	return path;
+function filterClosedDoors(moves) {
+	return moves.filter(m => m.node.name < 'A' || m.node.name > 'Z' || m.keys[m.node.name.toLowerCase()]);
 }
 
-
-function getWave(map, from, keys) {
-	const isWall = cell => 
-			(cell == "#") || (cell >= "A" && cell <= "Z" && keys.indexOf(cell.toLowerCase()) < 0);
-
-	const wave = {};
-	wave[xyToStr(from)] = 0;
-
-	let front = [from];
-
-	for (let step = 1; front.length != 0; ++step) {
-		front = front.reduce((a, f) => {
-			a.push(...moves.map(m => nextXy(f, m)).filter(xy => {
-				const xyStr = xyToStr(xy);
-				return (wave[xyStr] == undefined) && !isWall(map[xy[1]][xy[0]]);
-			}));
-			return a;
-		}, []);
-
-		front.forEach(f => wave[xyToStr(f)] = step);
-	}
-
-	return wave;
+function filterSeenInHistory(moves, history) {
+	return moves.filter(m => !history[getHistoryKey(m)] || m.steps < history[getHistoryKey(m)]);
 }
 
-const test = `#################
-#i.G..c...e..H.p#
-########.########
-#j.A..b...f..D.o#
-########@########
-#k.E..a...g..B.n#
-########.########
-#l.F..d...h..C.m#
-#################`;
+function getHistoryKey(move) {
+	return move.node.name + ":" + Object.keys(move.keys).sort().join("");
+}
+
+function addToHistory(moves, history) {
+	moves.forEach(m => history[getHistoryKey(m)] = m.steps);
+}
+
+function createGraph(map, root) {
+	root.name = '@';
+	root.link = [];
+
+	const seenNodes = {};
+	seenNodes[root.name] = root;
+
+	for (let queue = [root.name]; queue.length > 0;) {
+		const current = seenNodes[queue.shift()];
+
+		const nodesFromCurrent = getNodesFrom(map, current);
+		const notSeenNodes = nodesFromCurrent.filter(n => !seenNodes[n.name]);
+		notSeenNodes.forEach(n => seenNodes[n.name] = {x: n.x, y: n.y, name: n.name, link: []});
+
+		nodesFromCurrent.forEach(n => current.link.push({dist: n.dist, node: seenNodes[n.name]}));
+
+		queue.push(...notSeenNodes.map(n => n.name));
+	}
+
+	root.allKeys = Object.keys(seenNodes).filter(k => k >= 'a' && k <= 'z');
+
+	return root;	
+}
+
+function getCoord(map, symbol) {
+	const indexes = map.map(row => row.indexOf(symbol));
+	const y = indexes.findIndex(i => i >= 0);
+
+	if (y < 0) {
+		throw new Error(`${symbol} not found`);
+	}
+
+	return {x: indexes[y], y: y};
+}
+
+function getNodesFrom(map, startCoord) {
+	const nodes = [];
+
+	map = [...map].map(r => [...r]);
+
+	let front = [[startCoord.x, startCoord.y, 0]];
+	map[startCoord.y][startCoord.x] = '.';
+
+	while (front.length > 0) {
+		let [x, y, dist] = front.shift();
+
+		if (map[y][x] == '.') {
+			++dist;
+			front.push([x - 1, y, dist]);
+			front.push([x + 1, y, dist]);
+			front.push([x, y - 1, dist]);
+			front.push([x, y + 1, dist]);
+			map[y][x] = '#';
+		} else if ((map[y][x] >= 'a' && map[y][x] <= 'z') || (map[y][x] >= 'A' && map[y][x] <= 'Z') || (map[y][x] == '@')) {
+			nodes.push({x: x, y: y, dist: dist, name: map[y][x]});
+			map[y][x] = "#";
+		}
+
+	}
+
+	return nodes;
+}
 
 const input = `#################################################################################
 #.............#...#...O.#.#...........#.#...#.........#.......#.....#.......#.Z.#
