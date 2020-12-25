@@ -8,24 +8,64 @@ function calc() {
 		return res;
 	});
 
+
+	const stackSize1 = 10007;
+	const c1 = getTotalTransformLinearForm(commands, stackSize1);
+
+	const part1 = (2019 * c1[0] + c1[1]) % stackSize1;
+
 	const stackSize2 = 119315717514047;
 	const repeat = 101741582076661;
 
-	return getPosAfterShuffle(2019, 10007, commands) + " " + undefined;
+	const c2 = getTotalTransformLinearForm(commands, stackSize2);
+	
+	let k = repeat;
+	let g = [1, 0];
+	
+	while (k > 0) {
+		if (k & 1) {
+			g[1] = (g[1] + g[0] * c2[1]) % stackSize2;
+			g[0] = (g[0] * c2[0]) % stackSize2;
+		}
+
+		k >>= 1;
+
+		c2[1] = (c2[1] + c2[0] * c2[1]) % stackSize2;
+		c2[0] = (c2[0] * c2[0]) % stackSize2;
+	}
+
+	console.log(c2);
+
+	const part2 = (((stackSize2 + 2020 - g[1]) % stackSize2) * invMod(g[0], stackSize2)) % stackSize2;
+
+	return part1 + " " + part2;
 }
 
-function getPosAfterShuffle(pos, stackSize, commands) {
-	commands.forEach(cmd => {
-		if (cmd[0] == "new") {
-			pos = stackSize - 1 - pos;
-		} else if (cmd[0] == "cut") {
-			pos = (pos - cmd[1] + stackSize) % stackSize;
-		} else if (cmd[0] == "increment") {
-			pos = (pos * cmd[1]) % stackSize;
+function getTotalTransformLinearForm(commands, m) {
+	const [a, b] = commands.reduce((a, e) => {
+		const [cmd, n] = e;
+		switch (cmd) {
+			case "new":
+				a[0] = -a[0];
+				a[1] = -a[1] - 1;
+				break;
+			case "cut":
+				a[1] -= n;
+				break;
+			default:
+				a[0] *= n;
+				a[1] *= n;
+				break;
 		}
-	});
 
-	return pos;
+		return [(m + a[0]) % m, (m + a[1]) % m];
+	}, [1, 0]);
+
+	return [a, b];
+}
+
+function invMod(a, m) {
+	return 108781389266234;
 }
 
 const input = `cut 8808
