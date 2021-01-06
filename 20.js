@@ -1,15 +1,95 @@
 "use strict";
 
-const xyToStr = xy => xy.join(":");
-const strToXy = str => str.split(":").map(Number);
-const moves = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const nextXy = (xy, move) => [xy[0] + move[0], xy[1] + move[1]];
-const isAlpha = c => c >= "A" && c <= "Z";
-
 function calc() {
-	const map = input.split("\n").map(l => l.split(""));
+	const graph = createGraph(input.split("\n").map(l => l.split("")));
 
-	const teleports = {};
+	return getPath1(graph) + " " + getPath2(graph);
+}
+
+function getPath1(graph) {
+	let track = {"AA-": 0};
+	let queue = ["AA-:0"];
+
+	while (queue.length > 0) {
+		let [name, length] = queue.shift().split(":");
+		length = +length;
+
+		const node = graph.find(e => e.name == name);
+
+		node.links.forEach(e => {
+				const newLength = e.length + length;
+
+				if (!(track[e.name] <= newLength)) {
+					track[e.name] = newLength;
+					queue.push(e.name + ":" + newLength);
+				}
+			});
+	}	
+
+	return track["ZZ-"];
+}
+
+function getPath2(graph) {
+	let track = {"AA-:0": 0};
+	let queue = ["AA-:0:0"];
+
+	while (queue.length > 0) {
+		let [name, level, length] = queue.shift().split(":");
+		[level, length] = [+level, +length];
+
+		const node = graph.find(e => e.name == name);
+
+		node.links
+			.forEach(link => {
+				const newLength = link.length + length;
+				
+				let newLevel = level;
+
+				if (name.substring(0, 2) == link.name.substring(0, 2)) {
+					newLevel += (name[2] == "+" ? 1 : -1);
+				}
+
+				if (newLevel >= 0 && newLevel < 100) {
+					const newName = link.name + ":" + newLevel;
+
+					if (!(track[newName] <= newLength)) {
+						track[newName] = newLength;
+						queue.push(newName + ":" + newLength);
+					}
+				}
+			});
+	}
+
+	return track["ZZ-:0"];
+}
+
+
+function createGraph(map) {
+	const teleports = getTeleports(map);
+
+	teleports.forEach(t => map[t.y][t.x] = t.name);
+
+	const graph = teleports.map(t => {
+		const res = {name: t.name, links: []};
+
+		const pair = t.name.substr(0, 2) + (t.name[2] == "+" ? "-" : "+");
+
+		if (teleports.find(e => e.name == pair)) {
+			res.links.push({name: pair, length: 1});
+		}
+
+		res.links.push(...getLinks(map, t.x, t.y));
+
+		return res;
+	});
+
+	return graph;	
+}
+
+function getTeleports(map) {
+	const isAlpha = c => c >= "A" && c <= "Z";
+
+	const teleports = [];
 
 	for (let y = 0; y < map.length; ++y) {
 		for (let x = 0; x < map[y].length; ++x) {
@@ -19,50 +99,57 @@ function calc() {
 			const cr = map[y][x + 1];
 			const cd = (map[y + 1] || [])[x];
 
-			if (isAlpha(c)) {
+			if (isAlpha(c) && (isAlpha(cr) || isAlpha(cd))) {
+				let [xp, yp] = [x, y];
+				let outer = true;
+
 				if (isAlpha(cr)) {
-					teleports[xyToStr([cl == "." ? x - 1 : x + 2, y])] = [c, cr].join("");
-				} else if (isAlpha(cd)) {
-					teleports[xyToStr([x, cu == "." ? y - 1 : y + 2])] = [c, cd].join("");
+					xp = (cl == ".") ? x - 1 : x + 2;
+					outer = xp == 2 || xp == map[y].length - 3;
+				} else {
+					yp = (cu == ".") ? y - 1 : y + 2;
+					outer = yp == 2 || yp == map.length - 3;
 				}
+
+				const name = [c, isAlpha(cr) ? cr : cd].join("") + (outer ? "-" : "+");
+
+				teleports.push({name: name, x: xp, y: yp});
 			}
 		}
 	}
 
-	const from = strToXy(Object.keys(teleports).filter(k => teleports[k] == "AA")[0]);
-	const to = strToXy(Object.keys(teleports).filter(k => teleports[k] == "ZZ")[0]);
-	
-	const part1 = getWave(map, from, teleports)[xyToStr(to)];
-
-	return part1 + " " + undefined;
+	return teleports;
 }
 
-function warp(xy0, xy1, map, teleports) {
-	const xy0Str = xyToStr(xy0);
+function getLinks(map, x, y) {
+	map = [...map].map(r => [...r]);
 
-	if (!isAlpha(map[xy1[1]][xy1[0]]) || teleports[xy0Str] == undefined || 
-			teleports[xy0Str] == "AA" || teleports[xy0Str] == "ZZ") {
-		return xy1;
-	}
-
-	return strToXy(Object.keys(teleports)
-			.filter(k => k != xy0Str && teleports[k] == teleports[xy0Str])[0]);
-}
-
-
-function getWave(map, from, teleports) {
+	const xyToStr = xy => xy.join(":");
+	const strToXy = str => str.split(":").map(Number);
+	const moves = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+	const nextXy = (xy, move) => [xy[0] + move[0], xy[1] + move[1]];
 	const isWall = cell => cell != ".";
+
+	const links = [];
 	
 	const wave = {};
-	wave[xyToStr(from)] = 0;
+	wave[xyToStr([x, y])] = 0;
+	map[y][x] = "#";
 
-	let front = [from];
+	let front = [[x, y]];
 
 	for (let step = 1; front.length != 0; ++step) {
 		front = front.reduce((a, f) => {
-			a.push(...moves.map(m => warp(f, nextXy(f, m), map, teleports)).filter(xy => {
+			a.push(...moves.map(m => nextXy(f, m)).filter(xy => {
 				const xyStr = xyToStr(xy);
-				return (wave[xyStr] == undefined) && !isWall(map[xy[1]][xy[0]]);
+				const nextCell = map[xy[1]][xy[0]];
+				map[xy[1]][xy[0]] = "#";
+				
+				if (nextCell.length > 1) {
+					links.push({name: nextCell, length: step});
+				}
+
+				return (wave[xyStr] == undefined) && (nextCell == ".");
 			}));
 			return a;
 		}, []);
@@ -70,7 +157,7 @@ function getWave(map, from, teleports) {
 		front.forEach(f => wave[xyToStr(f)] = step);
 	}
 
-	return wave;
+	return links;
 }
 
 const input = `                                       L N           Q     O     W   M       F                                         
