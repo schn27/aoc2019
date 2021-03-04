@@ -1,71 +1,87 @@
 "use strict";
 
 function calc() {
-	const commands = input.split("\n").map(l => {
-		const res = [];
-		res.push(l.match(/(new)|(cut)|(increment)/g)[0]);
-		res.push((l.match(/-?\d+/g) || [0]).map(Number)[0]);
-		return res;
-	});
+	const commands = input.split("\n").map(l => [
+		l.match(/(new)|(cut)|(increment)/g)[0],
+		(l.match(/-?\d+/g) || [0]).map(Number)[0]
+	]);
 
+	return getPart1(commands) + " " + getPart2(commands);
+}
 
-	const stackSize1 = 10007;
-	const c1 = getTotalTransformLinearForm(commands, stackSize1);
+function getPart1(commands) {
+	const size = 10007;
+	const [a, b] = getTotalTransformLinearForm(commands, size);
+	return (2019 * a + b) % size;
+}
 
-	const part1 = (2019 * c1[0] + c1[1]) % stackSize1;
+function getPart2(commands) {
+	let size = 119315717514047;
+	const repeat = BigInt(101741582076661);
 
-	const stackSize2 = 119315717514047;
-	const repeat = 101741582076661;
+	let [a, b] = getTotalTransformLinearForm(commands, size);
+	[a, b] = [BigInt(a), BigInt(b)];
 
-	const c2 = getTotalTransformLinearForm(commands, stackSize2);
+	console.log(a, b);
 	
-	let k = repeat;
-	let g = [1, 0];
+	let [c, d] = [BigInt(1), BigInt(0)];
+
+	size = BigInt(size);
 	
-	while (k > 0) {
-		if (k & 1) {
-			g[1] = (g[1] + g[0] * c2[1]) % stackSize2;
-			g[0] = (g[0] * c2[0]) % stackSize2;
+	for (let k = repeat; k > 0; k >>= 1n) {
+		if (k & 1n) {
+			[c, d] = [(a * c) % size, (a * d + b) % size];
 		}
 
-		k >>= 1;
-
-		c2[1] = (c2[1] + c2[0] * c2[1]) % stackSize2;
-		c2[0] = (c2[0] * c2[0]) % stackSize2;
+		[a, b] = [(a * a) % size, (a * b + b) % size];
 	}
 
-	console.log(c2);
+	console.log(c, d);
 
-	const part2 = (((stackSize2 + 2020 - g[1]) % stackSize2) * invMod(g[0], stackSize2)) % stackSize2;
-
-	return part1 + " " + part2;
+	return ((size + BigInt(2020) - d) % size) * invMod(c, size) % size;
 }
 
-function getTotalTransformLinearForm(commands, m) {
-	const [a, b] = commands.reduce((a, e) => {
-		const [cmd, n] = e;
+function getTotalTransformLinearForm(commands, size) {
+	return commands.reduce(([a, b], [cmd, n]) => {
 		switch (cmd) {
-			case "new":
-				a[0] = -a[0];
-				a[1] = -a[1] - 1;
-				break;
-			case "cut":
-				a[1] -= n;
-				break;
-			default:
-				a[0] *= n;
-				a[1] *= n;
-				break;
+		case "new":
+			a = -a;
+			b = -b - 1;
+			break;
+		case "cut":
+			b -= n;
+			break;
+		case "increment":
+			a *= n;
+			b *= n;
+			break;
 		}
 
-		return [(m + a[0]) % m, (m + a[1]) % m];
+		return [(size + a) % size, (size + b) % size];
 	}, [1, 0]);
-
-	return [a, b];
 }
 
-function invMod(a, m) {
-	return 108781389266234;
+// https://www.geeksforgeeks.org/multiplicative-inverse-under-modulo-m/ 
+function invMod(a, m) { 
+	if (m == 1n) {
+	   return 0n;
+	}
+
+	let m0 = m;
+	let x0 = 0n;
+	let x1 = 1n;
+
+	while (a > 1n) {
+		const q = BigInt(Math.floor(Number(a / m)));
+		[a, m] = [m, a % m];
+		[x0, x1] = [x1 - q * x0, x0];
+	}
+
+	if (x1 < 0n) {
+	   x1 += m0;
+	}
+
+	return x1;
 }
 
 const input = `cut 8808
